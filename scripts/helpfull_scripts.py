@@ -6,7 +6,6 @@ from brownie import (
     VRFCoordinatorV2_5Mock,
     MockLinkToken,
     Contract,
-    interface,
     Lottery
 )
 from web3 import Web3
@@ -114,8 +113,9 @@ def read_stats():
     
     sub_ID = lottery.get_subscriptionId()
 
-    print(f"(+++) SubscriptionId : {lottery.get_subscriptionId()}")
-    print(f"(+++) STATS: {vrf_Coordinator.getSubscription(sub_ID)}")
+    printPurple(f"(+++) SubscriptionId: {lottery.get_subscriptionId()}")
+    printPurple(f"(+++) vrf_Coordinator stats: {vrf_Coordinator.getSubscription(sub_ID)}")
+    printPurple(f"(+++) The lottery state is: {lottery.lottery_state()}")
 
 def fund_subscription_with_link(sub_ID,amount=5*10**18,account=None):
     account = account if account else get_account()

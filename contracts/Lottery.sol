@@ -107,7 +107,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         recentWinner.transfer(address(this).balance);
 
         players = new address payable[](0);
-        lottery_state = LOTTERY_STATE.OPEN;
+        lottery_state = LOTTERY_STATE.CLOSED;
     }
     //---------------------------------------------------
     function requestRandomWords(

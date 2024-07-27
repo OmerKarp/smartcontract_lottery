@@ -1,5 +1,5 @@
-from brownie import accounts, config,Lottery, network
-from scripts.helpfull_scripts import get_account, LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_contract, fund_subscription_with_link, VRFCoordinatorV2_5Mock_loggic, read_stats,printBlue
+from brownie import Lottery
+from scripts.helpfull_scripts import get_account
 import time
 
 def end_lottery():
@@ -13,4 +13,3 @@ def end_lottery():
 
 def main():
     end_lottery()
-    read_stats()
