@@ -1,8 +1,8 @@
 from scripts.helpfull_scripts import (
     get_account,
-    fund_with_link,
     get_contract,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    VRFCoordinatorV2_5Mock_loggic
 )
 from brownie import exceptions, network
 from scripts.deploy import deploy_lottery
@@ -11,30 +11,22 @@ import pytest
 
 
 def test_get_entrance_fee():
-    lottery_contract = deploy_lottery()
-    # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         pytest.skip()
+    lottery_contract = deploy_lottery()
 
-    # Act
-    # 2,000 eth / usd
-    # usdEntryFee is 50
-    # 2000/1 == 50/x == 0.025
-    expected_entrance_fee = Web3.to_wei(0.025, "ether")
+    expected_entrance_fee = Web3.to_wei(0.025, "ether") # 2000/1 == 50/x ==> x = 0.025
     entrance_fee = lottery_contract.getEntranceFee()
-    # Assert
+
     print(entrance_fee)
     assert expected_entrance_fee == entrance_fee
 
 
 def test_cant_enter_unless_started():
-    lottery_contract = deploy_lottery()
-
-    # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         pytest.skip()
+    lottery_contract = deploy_lottery()
 
-    # Act / Assert
     with pytest.raises(exceptions.VirtualMachineError):
         lottery_contract.enter(
             {"from": get_account(), "value": lottery_contract.getEntranceFee()}
@@ -42,27 +34,21 @@ def test_cant_enter_unless_started():
 
 
 def test_can_start_and_enter_lottery():
-    lottery_contract = deploy_lottery()
-
-    # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         pytest.skip()
+    lottery_contract = deploy_lottery()
 
     account = get_account()
     lottery_contract.startLottery({"from": account})
-    # Act
     lottery_contract.enter(
         {"from": account, "value": lottery_contract.getEntranceFee()}
     )
-    # Assert
     assert lottery_contract.players(0) == account
 
 
 def test_can_end_lottery():
-    # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         pytest.skip()
-        
     lottery_contract = deploy_lottery()
 
     account = get_account()
@@ -70,37 +56,47 @@ def test_can_end_lottery():
     lottery_contract.enter(
         {"from": account, "value": lottery_contract.getEntranceFee()}
     )
-    fund_with_link(lottery_contract)
+    VRFCoordinatorV2_5Mock_loggic()
     lottery_contract.endLottery({"from": account})
     assert lottery_contract.lottery_state() == 2
 
 
-def test_can_pick_winner_correctly(lottery_contract):
-    # Arrange
+def test_can_pick_winner_correctly():
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         pytest.skip()
+    lottery_contract = deploy_lottery()
 
     account = get_account()
+
     lottery_contract.startLottery({"from": account})
-    lottery_contract.enter(
-        {"from": account, "value": lottery_contract.getEntranceFee()}
-    )
-    lottery_contract.enter(
-        {"from": get_account(index=1), "value": lottery_contract.getEntranceFee()}
-    )
-    lottery_contract.enter(
-        {"from": get_account(index=2), "value": lottery_contract.getEntranceFee()}
-    )
-    fund_with_link(lottery_contract)
-    starting_balance_of_account = account.balance()
+
+    lottery_contract.enter({"from": account, "value": lottery_contract.getEntranceFee()})
+    print(f"(+++) {account.address} entered the lottery!")
+    lottery_contract.enter({"from": get_account(index=1), "value": lottery_contract.getEntranceFee()})
+    print(f"(+++) {get_account(index=1).address} entered the lottery!")
+    lottery_contract.enter({"from": get_account(index=2), "value": lottery_contract.getEntranceFee()})
+    print(f"(+++) {get_account(index=2).address} entered the lottery!")
+
+    print(lottery_contract.balance())
+    
+    starting_balance_of_account = get_account(index=1).balance()
     balance_of_lottery = lottery_contract.balance()
+    subscription_balance = get_contract("vrf_coordinator").getSubscriptionBalance(lottery_contract.get_subscriptionId())
+    print(f"(+++) starting_balance_of_account: {starting_balance_of_account},balance_of_lottery: {balance_of_lottery},balance_of_sub: {subscription_balance}")
     transaction = lottery_contract.endLottery({"from": account})
-    request_id = transaction.events["RequestedRandomness"]["requestId"]
-    STATIC_RNG = 777
-    get_contract("vrf_coordinator").callBackWithRandomness(
-        request_id, STATIC_RNG, lottery_contract.address, {"from": account}
+    print("(+++) The lottery is ENDED!")
+    request_id = transaction.events["RequestSent"]["requestId"]
+    STATIC_RNG = [775]
+
+
+    print(f"(+++) starting_balance_of_account: {starting_balance_of_account},balance_of_lottery: {balance_of_lottery},balance_of_sub: {subscription_balance}")
+    get_contract("vrf_coordinator").fulfillRandomWordsWithOverride(
+        request_id,lottery_contract.address,STATIC_RNG, {"from": account}
     )
+    print(f"(+++) starting_balance_of_account: {starting_balance_of_account},balance_of_lottery: {balance_of_lottery},balance_of_sub: {subscription_balance}")
     # 777 % 3 = 0
-    assert lottery_contract.recentWinner() == account
+    print(lottery_contract.recentWinner())
+    print(lottery_contract.balance())
+    assert lottery_contract.recentWinner() == get_account(index=1)
     assert lottery_contract.balance() == 0
-    assert account.balance() == starting_balance_of_account + balance_of_lottery
+    assert get_account(index = 1).balance() == starting_balance_of_account + balance_of_lottery

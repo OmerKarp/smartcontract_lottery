@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ConfirmedOwnerWithProposal} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwnerWithProposal.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+import {ConfirmedOwnerWithProposal} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwnerWithProposal.sol";
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 
 contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     address payable[] public players;
     uint256 public usdEntryFee;
     AggregatorV3Interface internal ethUsdPriceFeed;
+    address payable public recentWinner;
 
     enum LOTTERY_STATE {
         OPEN,
@@ -27,8 +30,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
-    uint256 public s_subscriptionId =
-        15488724935866165118100874950439968859294199928493982214790167663870832234409;
+    uint256 public s_subscriptionId;
     uint256[] public requestIds;
     uint256 public lastRequestId;
     bytes32 public keyHash;
@@ -66,6 +68,14 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         return uint256(price) * 10 ** 10;
     }
 
+    function get_subscriptionId() public view returns (uint256) {
+        return s_subscriptionId;
+    }
+
+    function set_subscriptionId(uint256 _s_subscriptionId) public onlyOwner {
+        s_subscriptionId = _s_subscriptionId;
+    }
+
     function startLottery() public onlyOwner {
         require(
             lottery_state == LOTTERY_STATE.CLOSED,
@@ -76,11 +86,33 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
 
     function endLottery() public onlyOwner {
         lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
+        requestRandomWords(false); //put true if wanna pay in eth
     }
 
+    function fulfillRandomWords(
+        uint256 _requestId,
+        uint256[] calldata _randomWords
+    ) internal override {
+        require(
+            lottery_state == LOTTERY_STATE.CALCULATING_WINNER,
+            "(---) the state isnt right"
+        );
+        require(s_requests[_requestId].exists, "request not found");
+        s_requests[_requestId].fulfilled = true;
+        s_requests[_requestId].randomWords = _randomWords;
+        emit RequestFulfilled(_requestId, _randomWords);
+
+        uint256 indexOfWinner = _randomWords[0] % players.length;
+        recentWinner = players[indexOfWinner];
+        recentWinner.transfer(address(this).balance);
+
+        players = new address payable[](0);
+        lottery_state = LOTTERY_STATE.OPEN;
+    }
+    //---------------------------------------------------
     function requestRandomWords(
         bool enableNativePayment
-    ) external onlyOwner returns (uint256 requestId) {
+    ) public onlyOwner returns (uint256 requestId) {
         requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: keyHash,
@@ -104,16 +136,6 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         lastRequestId = requestId;
         emit RequestSent(requestId, numWords);
         return requestId;
-    }
-
-    function fulfillRandomWords(
-        uint256 _requestId,
-        uint256[] calldata _randomWords
-    ) internal override {
-        require(s_requests[_requestId].exists, "request not found");
-        s_requests[_requestId].fulfilled = true;
-        s_requests[_requestId].randomWords = _randomWords;
-        emit RequestFulfilled(_requestId, _randomWords);
     }
 
     function getRequestStatus(

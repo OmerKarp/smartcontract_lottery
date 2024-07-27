@@ -1,4 +1,4 @@
-from brownie import accounts, config,Lottery, network
+from brownie import accounts, config,Lottery, network # type: ignore
 from scripts.helpfull_scripts import get_account, LOCAL_BLOCKCHAIN_ENVIRONMENTS
 
 latestRequestId = 112380465960345515620071896874860889910842743219185763094417396937748749297414
@@ -17,6 +17,9 @@ def get_status_of_request(requestId):
     
     requestStatus = lottery.getRequestStatus(requestId)
     print(f"(+++) the request status of {requestId} is: {requestStatus}")
+    print(f"(+++) the type is {type(requestStatus[1][0])}")
+    print(f"(+++) the number is {int(requestStatus[1][0])}")
+
 
 def main():
     # latestRequestId = request_a_random_number()

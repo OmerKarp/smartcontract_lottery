@@ -8,14 +8,21 @@ compiler:
       - "@chainlink=smartcontractkit/chainlink-brownie-contracts@1.1.1"
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@3.4.0"
 networks:
+  default: development
+  development:
+    keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"
+
   mainnet-fork:
     eth_usd_price_feed: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
-    COORDINATOR: "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c"
-    keyHash: "0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d9"
+    vrf_coordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909"
+    keyHash: "0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef"
+    link_token: "0x514910771AF9Ca656af840dff83E8264EcF986CA"
   sepolia:
     eth_usd_price_feed: "0x694AA1769357215DE4FAC081bf1f309aDC325306"
-    COORDINATOR: "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B"
+    vrf_coordinator: "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B"
     keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"
+    link_token: "0x779877A7B0D9E8603169DdbD7836e478b4624789"
+    s_subscriptionId: "15488724935866165118100874950439968859294199928493982214790167663870832234409"
 dotenv: .env
 wallets:
   from_key: ${PRIVATE_KEY}
