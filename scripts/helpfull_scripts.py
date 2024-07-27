@@ -11,9 +11,7 @@ from brownie import (
 )
 from web3 import Web3
 
-
-def create_a_subscription():
-    VRFCoordinatorV2_5Mock.createSubscription
+# need to add auto add customer to the Sepolia VRF
 
 FORKED_LOCAL_ENVIRONMENTS = ["mainnet-fork", "mainnet-fork-dev"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache-local"]
@@ -88,7 +86,7 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
 def VRFCoordinatorV2_5Mock_loggic():
     account = get_account()
     lottery = Lottery[-1]
-    if lottery.get_subscriptionId() == None:
+    if lottery.get_subscriptionId() != None:
         print("(+++) VRFCoordinatorV2_5Mock_loggic already deployed...")
         return 
 
@@ -128,6 +126,6 @@ def fund_subscription_with_link(sub_ID,amount=5*10**18,account=None):
 def printBlue(message):
     print(f"\033[96m{message}\033[00m")
 
-def prPurple(message):
+def printPurple(message):
     print(f"\033[95m{message}\033[00m")
 
