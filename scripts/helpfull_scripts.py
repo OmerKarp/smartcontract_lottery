@@ -22,6 +22,12 @@ _BASEFEE=100000000000000000
 _GASPRICELINK=1000000000
 _WEIPERUNITLINK=4167665613945909
 
+lottery_state_mapping = {
+    "0":"OPEN",
+    "1":"CLOSED",
+    "2":"CALCULATING WINNER",
+}
+
 def get_account(index = None, id = None):
     if index:
         return accounts[index]
@@ -115,7 +121,8 @@ def read_stats():
 
     printPurple(f"(+++) SubscriptionId: {lottery.get_subscriptionId()}")
     printPurple(f"(+++) vrf_Coordinator stats: {vrf_Coordinator.getSubscription(sub_ID)}")
-    printPurple(f"(+++) The lottery state is: {lottery.lottery_state()}")
+    printPurple(f"(+++) The lottery state is: {lottery_state_mapping[str(lottery.lottery_state())]}")
+    printPurple(f"(+++) The players in the lottery are: {lottery.get_players()}")
 
 def fund_subscription_with_link(sub_ID,amount=5*10**18,account=None):
     account = account if account else get_account()

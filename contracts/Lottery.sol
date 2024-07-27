@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
 import {ConfirmedOwnerWithProposal} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwnerWithProposal.sol";
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
@@ -68,6 +67,10 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         return uint256(price) * 10 ** 10;
     }
 
+    function get_players() public view returns (address payable[] memory) {
+        return players;
+    }
+
     function get_subscriptionId() public view returns (uint256) {
         return s_subscriptionId;
     }
@@ -79,12 +82,16 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     function startLottery() public onlyOwner {
         require(
             lottery_state == LOTTERY_STATE.CLOSED,
-            "Can't start a new lottery yet!"
+            "(---) the lottery state needs to be CLOSED"
         );
         lottery_state = LOTTERY_STATE.OPEN;
     }
 
     function endLottery() public onlyOwner {
+        require(
+            lottery_state == LOTTERY_STATE.OPEN,
+            "(---) the lottery state needs to be OPEN"
+        );
         lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
         requestRandomWords(false); //put true if wanna pay in eth
     }
@@ -95,7 +102,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     ) internal override {
         require(
             lottery_state == LOTTERY_STATE.CALCULATING_WINNER,
-            "(---) the state isnt right"
+            "(---) the lottery state needs to be CALCULATING_WINNER"
         );
         require(s_requests[_requestId].exists, "request not found");
         s_requests[_requestId].fulfilled = true;

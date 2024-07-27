@@ -1,5 +1,5 @@
 from brownie import config,Lottery, network
-from scripts.helpfull_scripts import get_account, LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_contract, VRFCoordinatorV2_5Mock_loggic, read_stats
+from scripts.helpfull_scripts import get_account, LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_contract, VRFCoordinatorV2_5Mock_loggic
 
 def deploy_lottery():
     account = get_account()
@@ -16,4 +16,3 @@ def deploy_lottery():
 
 def main():
     deploy_lottery()
-    read_stats()
