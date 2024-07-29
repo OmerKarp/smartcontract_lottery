@@ -123,6 +123,7 @@ def read_stats():
     printPurple(f"(+++) vrf_Coordinator stats: {vrf_Coordinator.getSubscription(sub_ID)}")
     printPurple(f"(+++) The lottery state is: {lottery_state_mapping[str(lottery.lottery_state())]}")
     printPurple(f"(+++) The players in the lottery are: {lottery.get_players()}")
+    printPurple(f"(+++) The winning_amount is: {lottery.balance()} wei ({lottery.balance()/(10 ** 18)} ETH)")
 
 def fund_subscription_with_link(sub_ID,amount=5*10**18,account=None):
     account = account if account else get_account()
