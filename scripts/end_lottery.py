@@ -8,8 +8,11 @@ def end_lottery():
 
     ending_transaction = lottery.endLottery({"from": account})
     ending_transaction.wait(1)
-    time.sleep(180)
-    print(f"(+++) {lottery.recentWinner()} is the new winner!")
+    if len(lottery.get_players()) == 0:
+        print(f"(+++) There are 0 players in the lottery.")
+    else:
+        time.sleep(180)
+        print(f"(+++) {lottery.recentWinner()} is the new winner!")
 
 def end_lottery_development():
     account = get_account()
@@ -20,15 +23,18 @@ def end_lottery_development():
     ending_transaction = lottery.endLottery({"from": account})
     ending_transaction.wait(1)
 
-    request_id = ending_transaction.events["RequestSent"]["requestId"]
-    STATIC_RNG = [775]
+    if len(lottery.get_players()) > 0:
+        request_id = ending_transaction.events["RequestSent"]["requestId"]
+        STATIC_RNG = [775]
 
-    get_contract("vrf_coordinator").fulfillRandomWordsWithOverride(
-        request_id,lottery.address,STATIC_RNG, {"from": account}
-    )
+        get_contract("vrf_coordinator").fulfillRandomWordsWithOverride(
+            request_id,lottery.address,STATIC_RNG, {"from": account}
+        )
 
-    time.sleep(3)
-    print(f"(+++) {lottery.recentWinner()} is the new winner! he won {winning_amount} wei ({winning_amount/(10 ** 18)} ETH)")
+        time.sleep(3)
+        print(f"(+++) {lottery.recentWinner()} is the new winner! he won {winning_amount} wei ({winning_amount/(10 ** 18)} ETH)")
+    else:
+        print(f"(+++) There are 0 players in the lottery.")
 
 def main():
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:

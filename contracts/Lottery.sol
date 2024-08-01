@@ -93,7 +93,9 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
             "(---) the lottery state needs to be OPEN"
         );
         lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
-        requestRandomWords(false); //put true if wanna pay in eth
+        if (players.length > 0) {
+            requestRandomWords(false); //put true if wanna pay in eth
+        } else lottery_state = LOTTERY_STATE.CLOSED;
     }
 
     function fulfillRandomWords(
