@@ -10,10 +10,9 @@ from brownie import (
 )
 from web3 import Web3
 
-# need to add auto add customer to the Sepolia VRF
-
 FORKED_LOCAL_ENVIRONMENTS = ["mainnet-fork", "mainnet-fork-dev"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache-local"]
+LIVE_ENVIRONMENTS = ["sepolia"]
 
 DECIMALS = 8
 INITIAL_VALUE = 200000000000
