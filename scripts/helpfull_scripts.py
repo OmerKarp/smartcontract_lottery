@@ -27,6 +27,13 @@ lottery_state_mapping = {
     "2":"CALCULATING WINNER",
 }
 
+element_mapping = {
+        0: "rock_paper_scissors_game",
+        1: "color_game",
+        2: "number_game",
+        3: "dark_light_game"
+    }
+
 def get_account(index = None, id = None):
     if index:
         return accounts[index]
@@ -115,14 +122,48 @@ def VRFCoordinatorV2_5Mock_loggic():
 def read_stats():
     lottery = Lottery[-1]
     vrf_Coordinator = get_contract("vrf_coordinator")
-    
+
     sub_ID = lottery.get_subscriptionId()
 
+    # Print existing stats
     printPurple(f"(+++) SubscriptionId: {lottery.get_subscriptionId()}")
     printPurple(f"(+++) vrf_Coordinator stats: {vrf_Coordinator.getSubscription(sub_ID)}")
     printPurple(f"(+++) The lottery state is: {lottery_state_mapping[str(lottery.lottery_state())]}")
     printPurple(f"(+++) The players in the lottery are: {lottery.get_players()}")
     printPurple(f"(+++) The winning_amount is: {lottery.balance()} wei ({lottery.balance()/(10 ** 18)} ETH)")
+
+    # Get ticket information
+    ticket_difficulty = lottery.getTicketDifficulty()
+    ticket_elements = lottery.getTicketElements()
+    
+    printBlue(f"(+++) Ticket Difficulty Level: {ticket_difficulty}")
+
+    # Print ticket elements with difficulty
+    printBlue(f"(+++) Ticket Elements: ")
+    for i, element in enumerate(ticket_elements):
+        element_name = element_mapping[element]
+        element_difficulty = lottery.getElementDifficulty(element)  # Assuming you have a function to get the difficulty
+        printBlue(f"    Element {i + 1}: {element_name} (difficulty = {element_difficulty})")
+
+    # Print player guesses from Full_Lottery_Guess
+    printBlue(f"(+++) Lottery Guesses: ")
+    (lottery_guessers,lottery_guesses) = lottery.getPlayersGuesses()
+
+    # Ensure you have the correct mapping and data structure
+    for index_of_guesser, guesser in enumerate(lottery_guessers):
+        printBlue(f"    Player {guesser}:")
+        player_guesses = lottery_guesses[index_of_guesser]
+        
+        for index_lottery_guess, lottery_guess in enumerate(player_guesses):  # Ensure correct indexing
+            printBlue(f"        {guesser} guess number {index_lottery_guess+1}:")
+            for guess in lottery_guess:
+                element = guess[0]  # Access the element directly
+                guess_value = guess[1]  # Access the guess value directly
+                
+                element_name = element_mapping[element]  # Use the correct element for lookup
+                printBlue(f"            {element_name}: {guess_value}")
+
+
 
 def fund_subscription_with_link(sub_ID,amount=5*10**18,account=None):
     account = account if account else get_account()

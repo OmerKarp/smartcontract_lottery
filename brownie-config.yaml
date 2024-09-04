@@ -10,6 +10,9 @@ networks:
   development:
     keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"
     verify: False
+  ganache-local:
+    keyHash: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"
+    verify: False
   mainnet-fork:
     eth_usd_price_feed: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
     vrf_coordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909"

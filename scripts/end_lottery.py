@@ -6,13 +6,15 @@ def end_lottery():
     account = get_account()
     lottery = Lottery[-1]
 
+    winning_amount = lottery.balance()
+
     ending_transaction = lottery.endLottery({"from": account})
     ending_transaction.wait(1)
     if len(lottery.get_players()) == 0:
         print(f"(+++) There are 0 players in the lottery.")
     else:
         time.sleep(180)
-        print(f"(+++) {lottery.recentWinner()} is the new winner!")
+        print(f"(+++) {lottery.recentWinner()} is the new winner! he won {winning_amount} wei ({winning_amount/(10 ** 18)} ETH)")
 
 def end_lottery_development():
     account = get_account()
@@ -31,7 +33,7 @@ def end_lottery_development():
             request_id,lottery.address,STATIC_RNG, {"from": account}
         )
 
-        time.sleep(3)
+        time.sleep(10)
         print(f"(+++) {lottery.recentWinner()} is the new winner! he won {winning_amount} wei ({winning_amount/(10 ** 18)} ETH)")
     else:
         print(f"(+++) There are 0 players in the lottery.")
