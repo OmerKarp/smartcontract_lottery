@@ -11,7 +11,6 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     address payable[] public players;
     uint256 public usdEntryFee;
     AggregatorV3Interface internal ethUsdPriceFeed;
-    address payable public recentWinner;
 
     uint16 wanted_difficulty_level = 100;
     mapping(Element => uint8) public elements_difficulty_level;
@@ -24,10 +23,15 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     }
 
     event GuessSubmitted(address indexed guesser, Guess[] guesses);
+    event SolutionGenerated(Guess[] solution);
+    event debbuging_uint(uint256 number);
+    event debbuging_elements(Element[] ticketElements);
 
     struct Ticket {
         uint16 difficulty_level;
         Element[] elements;
+        Guess[] solution;
+        address[] winners;
     }
 
     Ticket public ticket;
@@ -43,13 +47,14 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     enum LOTTERY_STATE {
         OPEN,
         CLOSED,
+        WATING_FOR_VRFCOORDINATOR,
         CALCULATING_WINNER
     }
     LOTTERY_STATE public lottery_state;
 
     struct RequestStatus {
-        bool fulfilled; // whether the request has been successfully fulfilled
-        bool exists; // whether a requestId exists
+        bool fulfilled;
+        bool exists;
         uint256[] randomWords;
     }
 
@@ -75,10 +80,18 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         lottery_state = LOTTERY_STATE.CLOSED;
         keyHash = _keyHash;
         // Initial difficulty values
+        ticket.difficulty_level = 1;
         elements_difficulty_level[Element.rock_paper_scissors_game] = 3;
         elements_difficulty_level[Element.color_game] = 5;
         elements_difficulty_level[Element.number_game] = 10;
         elements_difficulty_level[Element.dark_light_game] = 2;
+    }
+
+    // Function to get all guesses of a player
+    function getSinglePlayerGuesses(
+        address player
+    ) public view returns (Guess[][] memory) {
+        return playersGuesses[player];
     }
 
     // Function to update the difficulty level of an element
@@ -87,13 +100,6 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         uint8 _difficulty
     ) public onlyOwner {
         elements_difficulty_level[_element] = _difficulty;
-    }
-
-    // Function to get all guesses of a player
-    function getSinglePlayerGuesses(
-        address player
-    ) public view returns (Guess[][] memory) {
-        return playersGuesses[player];
     }
 
     function getPlayersGuesses()
@@ -162,6 +168,43 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         emit GuessSubmitted(msg.sender, currentGuessArray);
     }
 
+    function getRecentTicket() public view returns (Ticket memory) {
+        require(tickets_history.length > 0, "No tickets available");
+
+        Ticket storage lastTicket = tickets_history[tickets_history.length - 1];
+
+        // Return a memory copy of the last ticket
+        return lastTicket;
+    }
+
+    function getTicket(
+        uint256 n
+    )
+        public
+        view
+        returns (
+            uint16 difficulty_level,
+            Element[] memory elements,
+            Guess[] memory solution,
+            address[] memory winners
+        )
+    {
+        require(n < tickets_history.length, "Invalid ticket index");
+
+        Ticket storage currentTicket = tickets_history[n]; // Renamed local variable
+
+        return (
+            currentTicket.difficulty_level,
+            currentTicket.elements,
+            currentTicket.solution,
+            currentTicket.winners
+        );
+    }
+
+    function getTicketHistory() public view returns (Ticket[] memory) {
+        return tickets_history;
+    }
+
     function getTicketDifficulty() public view returns (uint16) {
         return ticket.difficulty_level;
     }
@@ -201,12 +244,12 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     }
 
     function resetTicket() internal onlyOwner {
-        // Store the current ticket in the history
         tickets_history.push(ticket);
 
-        // Reset the ticket to default values
         ticket.difficulty_level = 1;
         delete ticket.elements;
+        delete ticket.solution;
+        delete ticket.winners;
     }
 
     function get_rundom_digit(
@@ -243,7 +286,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         );
         lottery_state = LOTTERY_STATE.OPEN;
         if (lastRequestId != 0) {
-            set_games(s_requests[lastRequestId].randomWords[0]); //idk how to get the latest number
+            set_games(s_requests[lastRequestId].randomWords[0]);
         } else {
             set_games(
                 22457654523000873890618985732870744312626094790626683287552762375778023379207
@@ -256,20 +299,115 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
             lottery_state == LOTTERY_STATE.OPEN,
             "(---) the lottery state needs to be OPEN"
         );
-        lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
+        lottery_state = LOTTERY_STATE.WATING_FOR_VRFCOORDINATOR;
         if (players.length > 0) {
             requestRandomWords(false); //put true if wanna pay in eth
         } else {
             lottery_state = LOTTERY_STATE.CLOSED;
+            resetTicket();
+        }
+    }
+
+    function generateGuesses(
+        uint256 number
+    ) public view returns (Guess[] memory) {
+        // Get the elements from the ticket
+        Element[] memory ticketElements = ticket.elements;
+        uint8 numElements = uint8(ticketElements.length); // Number of elements in the ticket
+
+        Guess[] memory guesses = new Guess[](numElements);
+
+        for (uint8 i = 0; i < numElements; i++) {
+            uint8 digit = get_rundom_digit(number, i + 1); // Extract the (i+1)th digit from the last
+            guesses[i] = Guess({
+                element: ticketElements[i], // Map index to corresponding Element from the ticket
+                guessValue: (digit % getElementDifficulty(ticketElements[i])) +
+                    1
+            });
         }
 
-        // Reset the ticket
-        resetTicket();
+        return guesses;
+    }
+
+    function calculate_winners() public onlyOwner {
+        require(
+            lottery_state == LOTTERY_STATE.CALCULATING_WINNER,
+            "(---) the lottery state needs to be CALCULATING_WINNER"
+        );
+        Guess[] memory winningGuesses = generateGuesses(
+            s_requests[lastRequestId].randomWords[0]
+        );
+        address[] memory tempWinners = new address[](players.length);
+        uint8 winnersCount = 0;
+        uint256 prizeAmount = address(this).balance;
+
+        // Check each player's guesses
+        for (uint16 i = 0; i < players.length; i++) {
+            address player = players[i];
+            Guess[][] storage playerGuesses = playersGuesses[player];
+
+            // Loop through each set of guesses
+            for (uint32 j = 0; j < playerGuesses.length; j++) {
+                Guess[] storage guesses = playerGuesses[j];
+
+                // Check if player's guesses match the winning guesses
+                if (checkGuesses(guesses, winningGuesses)) {
+                    tempWinners[winnersCount] = player;
+                    winnersCount++;
+                    break; // Move to the next player if a match is found
+                }
+            }
+        }
+
+        // Update the ticket with the solution and winners
+        for (uint8 i = 0; i < winningGuesses.length; i++) {
+            ticket.solution.push(winningGuesses[i]);
+        }
+
+        // Emit the SolutionGenerated event
+        emit SolutionGenerated(winningGuesses);
+
+        // Copy `tempWinners` to storage
+        for (uint8 i = 0; i < winnersCount; i++) {
+            ticket.winners.push(tempWinners[i]);
+        }
+
+        // Calculate prize per winner
+        uint256 prizePerWinner = winnersCount > 0
+            ? prizeAmount / winnersCount
+            : 0;
+
+        // Transfer the prize to all winners
+        for (uint8 i = 0; i < winnersCount; i++) {
+            payable(tempWinners[i]).transfer(prizePerWinner);
+        }
 
         // Reset the playersGuesses
         for (uint16 i = 0; i < players.length; i++) {
             delete playersGuesses[players[i]];
         }
+
+        resetTicket();
+        players = new address payable[](0);
+        lottery_state = LOTTERY_STATE.CLOSED;
+    }
+
+    function checkGuesses(
+        Guess[] memory guesses,
+        Guess[] memory winningGuesses
+    ) internal pure returns (bool) {
+        if (guesses.length != winningGuesses.length) return false;
+
+        for (uint32 i = 0; i < guesses.length; i++) {
+            if (
+                guesses[i].element != winningGuesses[i].element ||
+                guesses[i].guessValue != winningGuesses[i].guessValue
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     function fulfillRandomWords(
@@ -277,20 +415,15 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         uint256[] calldata _randomWords
     ) internal override {
         require(
-            lottery_state == LOTTERY_STATE.CALCULATING_WINNER,
-            "(---) the lottery state needs to be CALCULATING_WINNER"
+            lottery_state == LOTTERY_STATE.WATING_FOR_VRFCOORDINATOR,
+            "(---) the lottery state needs to be WATING_FOR_VRFCOORDINATOR"
         );
         require(s_requests[_requestId].exists, "request not found");
         s_requests[_requestId].fulfilled = true;
         s_requests[_requestId].randomWords = _randomWords;
         emit RequestFulfilled(_requestId, _randomWords);
 
-        uint256 indexOfWinner = _randomWords[0] % players.length;
-        recentWinner = players[indexOfWinner];
-        recentWinner.transfer(address(this).balance);
-
-        players = new address payable[](0);
-        lottery_state = LOTTERY_STATE.CLOSED;
+        lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
     }
     //---------------------------------------------------
     function requestRandomWords(

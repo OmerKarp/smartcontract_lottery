@@ -1,7 +1,7 @@
 from brownie import Lottery
 from scripts.helpfull_scripts import get_account
 
-def enter_lottery():
+def enter_lottery(guesses =  []):
     account = get_account()
     lottery = Lottery[-1]
 
@@ -15,22 +15,22 @@ def enter_lottery():
     }
 
     # Prompt user for guesses
-    guesses = []
-    for i, element in enumerate(elements):
-        element_name = element_names[element]
-        max_guess = lottery.getElementDifficulty(element)
-        
-        while True:
-            try:
-                guess = int(input(f"Enter your guess for Element {i + 1} ({element_name}), between 1 and {max_guess}: "))
-                if 1 <= guess <= max_guess:
-                    break
-                else:
-                    print(f"Invalid guess! Please enter a number between 1 and {max_guess}.")
-            except ValueError:
-                print("Invalid input! Please enter an integer.")
-        
-        guesses.append((element, guess))
+    if guesses == []:
+        for i, element in enumerate(elements):
+            element_name = element_names[element]
+            max_guess = lottery.getElementDifficulty(element)
+            
+            while True:
+                try:
+                    guess = int(input(f"Enter your guess for Element {i + 1} ({element_name}), between 1 and {max_guess}: "))
+                    if 1 <= guess <= max_guess:
+                        break
+                    else:
+                        print(f"Invalid guess! Please enter a number between 1 and {max_guess}.")
+                except ValueError:
+                    print("Invalid input! Please enter an integer.")
+            
+            guesses.append((element, guess))
 
     # Convert list of tuples to a format suitable for the contract
     guess_tuples = [(elem, val) for elem, val in guesses]

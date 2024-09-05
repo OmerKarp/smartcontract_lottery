@@ -24,7 +24,8 @@ _WEIPERUNITLINK=4167665613945909
 lottery_state_mapping = {
     "0":"OPEN",
     "1":"CLOSED",
-    "2":"CALCULATING WINNER",
+    "2":"WATING_FOR_VRFCOORDINATOR",
+    "3":"CALCULATING_WINNER",
 }
 
 element_mapping = {
@@ -70,18 +71,13 @@ def get_contract(contract_name):
     contract_type = contract_to_mock[contract_name]
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         if len(contract_type) <= 0:
-            # MockV3Aggregator.length
             deploy_mocks()
         contract = contract_type[-1]
-        # MockV3Aggregator[-1]
     else:
         contract_address = config["networks"][network.show_active()][contract_name]
-        # address
-        # ABI
         contract = Contract.from_abi(
             contract_type._name, contract_address, contract_type.abi
         )
-        # MockV3Aggregator.abi
     return contract
 
 def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
@@ -97,9 +93,6 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
 def VRFCoordinatorV2_5Mock_loggic():
     account = get_account()
     lottery = Lottery[-1]
-    if lottery.get_subscriptionId() != None:
-        print("(+++) VRFCoordinatorV2_5Mock_loggic already deployed...")
-        return 
 
     vrf_Coordinator = get_contract("vrf_coordinator")
     
@@ -108,7 +101,7 @@ def VRFCoordinatorV2_5Mock_loggic():
     sub_ID = transaction_receipt.events["SubscriptionCreated"]["subId"]
     print(f"(+++) Created subscription!!! subscription state is: {vrf_Coordinator.getSubscription(str(sub_ID))}")
 
-    transaction_receipt = fund_subscription_with_link(sub_ID,100*10**18,account)
+    transaction_receipt = fund_subscription_with_link(sub_ID,1000*10**18,account)
     transaction_receipt.wait(1)
     print(f"(+++) Subscription funded!!! subscription state is: {vrf_Coordinator.getSubscription(str(sub_ID))}")
 
@@ -176,4 +169,3 @@ def printBlue(message):
 
 def printPurple(message):
     print(f"\033[95m{message}\033[00m")
-
