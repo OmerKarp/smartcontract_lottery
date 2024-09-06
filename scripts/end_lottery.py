@@ -1,6 +1,5 @@
 from brownie import Lottery, network
 from scripts.helpfull_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_account, get_contract
-import time
 
 def end_lottery():
     account = get_account()
@@ -11,7 +10,7 @@ def end_lottery():
     if len(lottery.get_players()) == 0:
         print(f"(+++) There are 0 players in the lottery.")
 
-        
+
 def end_lottery_development():
     account = get_account()
     lottery = Lottery[-1]

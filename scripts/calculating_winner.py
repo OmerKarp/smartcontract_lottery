@@ -1,6 +1,5 @@
 from brownie import Lottery, network
 from scripts.helpfull_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_account, get_contract
-import time
 
 def calculating_winner():
     account = get_account()
