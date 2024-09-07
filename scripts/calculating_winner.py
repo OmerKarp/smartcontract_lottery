@@ -1,14 +1,20 @@
-from brownie import Lottery, network
+from brownie import Lottery, network, LuckBank
 from scripts.helpfull_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_account, get_contract
 
 def calculating_winner():
     account = get_account()
     lottery = Lottery[-1]
+    luckBank = LuckBank[-1]
 
-    winning_amount = lottery.balance()
+    winning_amount = lottery.balance() * 0.9
 
     tx = lottery.calculate_winners({"from": account})
     tx.wait(1)
+
+    LuckBankEarnings = luckBank.balance()
+
+    received_event = tx.events["Received"]
+    print(f"(+++) The event received_event is: {received_event['sender']}, {received_event['amount']}")
 
     # debbuging_elements_event = tx.events["debbuging_elements"]
     # print(f"(+++) The event debbugingElements is: {debbuging_elements_event}")
@@ -26,6 +32,7 @@ def calculating_winner():
         print(f"(+++) The Ticket History is {lottery.getTicketHistory()}")
     else:
         print(f"(+++) {recentWinners} are the new winners! They won {winning_amount/len(recentWinners)} each in wei ({winning_amount/len(recentWinners)/(10 ** 18)} in ETH)")
+        print(f"(+++) The LuckBank earnings in wei are: {LuckBankEarnings} ({LuckBankEarnings/(10 ** 18)} in ETH)")
         print(f"(+++) The recent Ticket Was {recentTicket}")
         print(f"(+++) The Ticket History is {lottery.getTicketHistory()}")
 

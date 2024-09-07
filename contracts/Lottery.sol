@@ -7,10 +7,17 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFCo
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 
+interface LuckBank {
+    function updateStakersRewards(uint256 earnings) external;
+}
+
 contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     address payable[] public players;
     uint256 public usdEntryFee;
     AggregatorV3Interface internal ethUsdPriceFeed;
+
+    address payable public LuckBankAddress;
+    LuckBank public luckBank;
 
     uint16 wanted_difficulty_level = 100;
     mapping(Element => uint8) public elements_difficulty_level;
@@ -73,7 +80,8 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     constructor(
         address _priceFeedAddress,
         address _vrfCoordinator,
-        bytes32 _keyHash
+        bytes32 _keyHash,
+        address payable _LuckBankAddress
     ) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         usdEntryFee = 50 * (10 ** 18);
         ethUsdPriceFeed = AggregatorV3Interface(_priceFeedAddress);
@@ -85,6 +93,13 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         elements_difficulty_level[Element.color_game] = 5;
         elements_difficulty_level[Element.number_game] = 10;
         elements_difficulty_level[Element.dark_light_game] = 2;
+
+        setLuckBank(_LuckBankAddress);
+    }
+
+    function setLuckBank(address payable _LuckBankAddress) public onlyOwner {
+        LuckBankAddress = _LuckBankAddress;
+        luckBank = LuckBank(_LuckBankAddress);
     }
 
     // Function to get all guesses of a player
@@ -339,7 +354,6 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         );
         address[] memory tempWinners = new address[](players.length);
         uint8 winnersCount = 0;
-        uint256 prizeAmount = address(this).balance;
 
         // Check each player's guesses
         for (uint16 i = 0; i < players.length; i++) {
@@ -372,9 +386,12 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
             ticket.winners.push(tempWinners[i]);
         }
 
+        // //send 10% to the LuckBank.sol contract
+        payLuckBankEarnings();
+
         // Calculate prize per winner
         uint256 prizePerWinner = winnersCount > 0
-            ? prizeAmount / winnersCount
+            ? address(this).balance / winnersCount
             : 0;
 
         // Transfer the prize to all winners
@@ -390,6 +407,13 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         resetTicket();
         players = new address payable[](0);
         lottery_state = LOTTERY_STATE.CLOSED;
+    }
+
+    function payLuckBankEarnings() internal {
+        //send 10% to the LuckBank.sol contract
+        uint256 earnings = address(this).balance / 10;
+        LuckBankAddress.transfer(earnings);
+        luckBank.updateStakersRewards(earnings);
     }
 
     function checkGuesses(

@@ -9,11 +9,21 @@ contract LuckBank is Ownable {
     address[] public stakers;
     IERC20 public luckToken;
     mapping(address => uint256) public stakersRewards;
+    address public lotteryAddress;
+
+    event Received(address indexed sender, uint256 amount);
 
     constructor(address _luckTokenAddress) Ownable(msg.sender) {
         luckToken = IERC20(_luckTokenAddress);
     }
 
+    function setLotteryAddress(address _lotteryAddress) public onlyOwner {
+        lotteryAddress = _lotteryAddress;
+    }
+
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
+    }
     function isStaker(address _address) internal view returns (bool) {
         for (uint i = 0; i < stakers.length; i++) {
             if (stakers[i] == _address) {
@@ -63,7 +73,11 @@ contract LuckBank is Ownable {
         stakersRewards[msg.sender] = 0;
     }
 
-    function updateStakersRewards(uint256 earnings) public onlyOwner {
+    function updateStakersRewards(uint256 earnings) public {
+        require(
+            msg.sender == lotteryAddress,
+            "Only the lottery contract can call the updateStakersRewards function!!"
+        );
         for (
             uint16 stakersIndex = 0;
             stakersIndex < stakers.length;
