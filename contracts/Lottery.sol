@@ -422,7 +422,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     ) internal pure returns (bool) {
         if (guesses.length != winningGuesses.length) return false;
 
-        for (uint32 i = 0; i < guesses.length; i++) {
+        for (uint8 i = 0; i < guesses.length; i++) {
             if (
                 guesses[i].element != winningGuesses[i].element ||
                 guesses[i].guessValue != winningGuesses[i].guessValue
