@@ -62,9 +62,12 @@ contract LuckBank is Ownable {
     }
 
     function getStakerShare(address staker) public view returns (uint256) {
-        return
-            luckStakingBalance[staker] /
-            IERC20(luckToken).balanceOf(address(this));
+        uint256 totalStaked = IERC20(luckToken).balanceOf(address(this));
+        if (totalStaked == 0) {
+            return 0;
+        }
+        // Scale by 1e18 so we dont get 0 beacuse of solidity floor system
+        return (luckStakingBalance[staker] * 1e18) / totalStaked;
     }
 
     function claimReward() public {
@@ -84,14 +87,20 @@ contract LuckBank is Ownable {
             msg.sender == lotteryAddress,
             "Only the lottery contract can call the updateStakersRewards function!!"
         );
+
         for (
             uint16 stakersIndex = 0;
             stakersIndex < stakers.length;
             stakersIndex++
         ) {
-            stakersRewards[stakers[stakersIndex]] +=
-                earnings *
-                getStakerShare(stakers[stakersIndex]);
+            address staker = stakers[stakersIndex];
+            uint256 scaledShare = getStakerShare(staker);
+
+            // Calculate the reward for the staker
+            if (scaledShare > 0) {
+                // Multiply earnings by scaled share and divide by 1e18
+                stakersRewards[staker] += (earnings * scaledShare) / 1e18;
+            }
         }
     }
 }

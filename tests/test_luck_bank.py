@@ -170,17 +170,20 @@ def test_claim_reward_two_stakers():
     initial_balance_1 = Web3.eth.get_balance(account1.address)
     luck_bank.claimReward({'from': account1})
     final_balance_1 = Web3.eth.get_balance(account1.address)
+    reward_1 = final_balance_1 - initial_balance_1
 
     initial_balance_2 = Web3.eth.get_balance(account2.address)
     luck_bank.claimReward({'from': account2})
     final_balance_2 = Web3.eth.get_balance(account2.address)
+    reward_2 = final_balance_2 - initial_balance_2
 
     # Assert that the final balances are as expected
-    assert final_balance_1 == initial_balance_1 + expected_reward_1
-    assert final_balance_2 == initial_balance_2 + expected_reward_2
+    tolerance = Web3.to_wei(10, 'wei')  # Tolerance for floating-point precision
+    assert abs(final_balance_1 - (initial_balance_1 + expected_reward_1)) < tolerance
+    assert abs(final_balance_2 - (initial_balance_2 + expected_reward_2)) < tolerance
 
     # The contract's balance should have decreased by the reward amount
-    assert Web3.eth.get_balance(luck_bank.address) == contract_balance_before - earnings
+    assert Web3.eth.get_balance(luck_bank.address) == contract_balance_before - (reward_1 +reward_2)
 
 def test_update_stakers_rewards():
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
