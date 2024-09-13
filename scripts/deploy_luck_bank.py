@@ -6,6 +6,7 @@ def deploy_luck_bank():
     luckToken = LuckToken[-1]
     luckBank = LuckBank.deploy(luckToken.address, {"from": account})
     luckBank.tx.wait(1)
+    return luckBank
 
 def main():
     deploy_luck_bank()

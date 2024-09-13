@@ -24,7 +24,8 @@ contract LuckBank is Ownable {
     receive() external payable {
         emit Received(msg.sender, msg.value);
     }
-    function isStaker(address _address) internal view returns (bool) {
+
+    function isStaker(address _address) public view returns (bool) {
         for (uint i = 0; i < stakers.length; i++) {
             if (stakers[i] == _address) {
                 return true;
@@ -62,14 +63,19 @@ contract LuckBank is Ownable {
 
     function getStakerShare(address staker) public view returns (uint256) {
         return
-            IERC20(luckToken).balanceOf(staker) /
-            IERC20(luckToken).totalSupply();
+            luckStakingBalance[staker] /
+            IERC20(luckToken).balanceOf(address(this));
     }
 
     function claimReward() public {
         //NEED TO PROTECT FROM REENTRENCY ATTACK
         uint256 reward = stakersRewards[msg.sender];
-        luckToken.transfer(msg.sender, reward);
+        require(reward > 0, "No rewards to claim");
+        require(
+            address(this).balance >= reward,
+            "Insufficient balance in contract"
+        );
+        payable(msg.sender).transfer(reward);
         stakersRewards[msg.sender] = 0;
     }
 

@@ -5,6 +5,7 @@ def deploy_luck_token():
     account = get_account()
     luckToken = LuckToken.deploy({"from": account})
     luckToken.tx.wait(1)
+    return luckToken
 
 def main():
     deploy_luck_token()

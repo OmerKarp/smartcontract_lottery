@@ -267,30 +267,48 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         delete ticket.winners;
     }
 
-    function get_rundom_digit(
+    function get_random_3_digits(
         uint256 number,
-        uint8 n
-    ) public pure returns (uint8) {
-        // Shift the number right by (n-1) digits to bring the desired digit to the least significant position
-        for (uint8 i = 1; i < n; i++) {
-            number /= 10;
+        uint8 nth_digits
+    ) public pure returns (uint16) {
+        // Ensure that nth_digits is within a reasonable range to avoid overflow
+        require(nth_digits < 19, "nth_digits too large"); // 10^18 is the max safe uint256 power
+
+        uint256 tempNumber = number; // Create a local copy of the number
+        uint16 result = 0;
+        uint8 digit;
+
+        // Calculate the divisor to start extracting from the nth digit
+        uint256 divisor = 10 ** nth_digits;
+
+        // Ensure divisor is not zero and extract digits
+        for (uint8 i = 0; i < 3; i++) {
+            if (divisor == 0) {
+                break; // Stop if divisor is zero to avoid division by zero
+            }
+            digit = uint8((tempNumber / divisor) % 10); // Extract the digit at the current position
+            result += uint16(digit * (10 ** (2 - i))); // Place the digit in the correct position in result
+            divisor /= 10; // Move to the next digit to the right
         }
-        return uint8(number % 10); // Cast to uint8
+
+        return result;
     }
 
     function set_games(uint256 _games_generator_number) internal {
         uint8 index = 0;
-        uint8 numElements = uint8(type(Element).max) + 1; // Number of elements in the enum
+        uint8 numElements = uint8(type(Element).max) + 1;
 
-        // Initialize the ticket difficulty level to 1
         ticket.difficulty_level = 1;
 
         while (ticket.difficulty_level < wanted_difficulty_level) {
-            uint8 digit = get_rundom_digit(_games_generator_number, index++);
-            Element element = Element(digit % numElements); // Generate a random element from the digit
+            uint16 random_3_digit_number = get_random_3_digits(
+                _games_generator_number,
+                index++
+            );
+            Element element = Element(random_3_digit_number % numElements);
 
             ticket.elements.push(element);
-            ticket.difficulty_level *= elements_difficulty_level[element]; // Multiply difficulty
+            ticket.difficulty_level *= elements_difficulty_level[element];
         }
     }
 
@@ -326,18 +344,19 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     function generateGuesses(
         uint256 number
     ) public view returns (Guess[] memory) {
-        // Get the elements from the ticket
         Element[] memory ticketElements = ticket.elements;
-        uint8 numElements = uint8(ticketElements.length); // Number of elements in the ticket
+        uint8 numElements = uint8(ticketElements.length);
 
         Guess[] memory guesses = new Guess[](numElements);
 
         for (uint8 i = 0; i < numElements; i++) {
-            uint8 digit = get_rundom_digit(number, i + 1); // Extract the (i+1)th digit from the last
+            uint16 random_3_digit_number = get_random_3_digits(number, i + 1);
             guesses[i] = Guess({
-                element: ticketElements[i], // Map index to corresponding Element from the ticket
-                guessValue: (digit % getElementDifficulty(ticketElements[i])) +
-                    1
+                element: ticketElements[i],
+                guessValue: uint8(
+                    (random_3_digit_number %
+                        getElementDifficulty(ticketElements[i])) + 1
+                )
             });
         }
 
