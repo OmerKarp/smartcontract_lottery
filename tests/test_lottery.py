@@ -34,7 +34,7 @@ def test_setLuckBank():
     # Check if the luckBank contract instance is correctly set by comparing addresses
     assert lottery.luckBank() == luck_bank_address
 
-def test_setElementDifficulty():
+def test_setElementDifficulty(): # also tests the getElementDifficulty function
     luck_token, luck_bank, lottery, account = setup_environment()
 
     # Enum value for rock_paper_scissors_game (0 in the enum)
@@ -46,13 +46,30 @@ def test_setElementDifficulty():
 
     # Check if the element's difficulty is correctly set
     assert lottery.elements_difficulty_level(element) == difficulty
+    assert lottery.getElementDifficulty(element) == difficulty
+
+def test_start_lottery(): # also tests the set_games,getTicketDifficulty,getTicketElements functions
+    luck_token, luck_bank, lottery, account = setup_environment()
+
+    # Ensure the lottery is in the OPEN state
+    lottery.startLottery({'from': account})
+    assert lottery.lottery_state() == 0  # LOTTERY_STATE.OPEN
+
+    ticket_wanted_difficulty_level = lottery.wanted_difficulty_level()
+    ticket_difficulty_level = lottery.getTicketDifficulty()
+
+    assert ticket_difficulty_level >= ticket_wanted_difficulty_level
+    assert ticket_difficulty_level < ticket_wanted_difficulty_level * 100 # the difficulty level didnt explode for some reason
+
+    ticket_elements = lottery.getTicketElements()
+
+    assert len(ticket_elements) > 1
 
 def test_enter_lottery():
     luck_token, luck_bank, lottery, account = setup_environment()
 
     # Ensure the lottery is in the OPEN state
     lottery.startLottery({'from': account})
-    assert lottery.lottery_state() == 0  # LOTTERY_STATE.OPEN
 
     guesses = []
     elements = lottery.getTicketElements()
@@ -103,3 +120,38 @@ def test_getEntranceFee():
     entranceFee_in_wei = entranceFee_in_eth * (10**18)
 
     assert lottery.getEntranceFee() == entranceFee_in_wei
+
+def test_set_subscriptionId():
+    luck_token, luck_bank, lottery, account = setup_environment()
+    account2 = get_account(index=1)
+
+    fake_s_subscriptionId = 123
+    lottery.set_subscriptionId(fake_s_subscriptionId,{"from": account})
+
+    assert lottery.s_subscriptionId() == fake_s_subscriptionId
+
+    with pytest.raises(exceptions.VirtualMachineError):
+        lottery.set_subscriptionId(fake_s_subscriptionId,{"from": account2})
+
+def test_get_random_3_digits():
+    luck_token, luck_bank, lottery, account = setup_environment()
+
+    random_big_number = 22457654523000873890618985732870744312626094790626683287552762375778023379207
+    random_3_digits_namber = lottery.get_random_3_digits(random_big_number,0)
+
+    assert random_3_digits_namber == 207 # last 3 digit of the number
+
+    random_3_digits_namber = lottery.get_random_3_digits(random_big_number,1)
+    assert random_3_digits_namber == 920 # last 4 digit of the number without the last one
+
+def test_generateGuesses():
+    luck_token, luck_bank, lottery, account = setup_environment()
+
+    lottery.startLottery({'from': account})
+
+    random_big_number = 22457654523000873890618985732870744312626094790626683287552762375778023379207
+    random_guesses = lottery.generateGuesses(random_big_number)
+
+    print(random_guesses)
+    assert len(random_guesses) != 0
+    assert len(random_guesses) == len(lottery.getTicketElements())

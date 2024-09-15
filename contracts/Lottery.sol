@@ -19,7 +19,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     address payable public LuckBankAddress;
     LuckBank public luckBank;
 
-    uint16 wanted_difficulty_level = 100;
+    uint16 public wanted_difficulty_level = 100;
     mapping(Element => uint8) public elements_difficulty_level;
 
     enum Element {
@@ -258,7 +258,13 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         s_subscriptionId = _s_subscriptionId;
     }
 
-    function resetTicket() internal onlyOwner {
+    function set_wanted_difficulty_level(
+        uint16 _wanted_difficulty_level
+    ) public onlyOwner {
+        wanted_difficulty_level = _wanted_difficulty_level;
+    }
+
+    function resetTicket() internal {
         tickets_history.push(ticket);
 
         ticket.difficulty_level = 1;
@@ -279,7 +285,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         uint8 digit;
 
         // Calculate the divisor to start extracting from the nth digit
-        uint256 divisor = 10 ** nth_digits;
+        uint256 divisor = 10 ** (nth_digits + 2);
 
         // Ensure divisor is not zero and extract digits
         for (uint8 i = 0; i < 3; i++) {
