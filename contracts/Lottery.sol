@@ -49,7 +49,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
         uint8 guessValue;
     }
 
-    mapping(address => Guess[][]) private playersGuesses; // address => [[guess,guess,guess],[guess,guess,guess]]
+    mapping(address => Guess[][]) public playersGuesses; // address => [[guess,guess,guess],[guess,guess,guess]]
 
     enum LOTTERY_STATE {
         OPEN,
