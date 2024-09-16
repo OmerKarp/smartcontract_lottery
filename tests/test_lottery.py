@@ -48,7 +48,7 @@ def test_setElementDifficulty(): # also tests the getElementDifficulty function
     assert lottery.elements_difficulty_level(element) == difficulty
     assert lottery.getElementDifficulty(element) == difficulty
 
-def test_start_lottery(): # also tests the set_games,getTicketDifficulty,getTicketElements functions
+def test_startLottery(): # also tests the set_games,getTicketDifficulty,getTicketElements functions
     luck_token, luck_bank, lottery, account = setup_environment()
 
     # Ensure the lottery is in the OPEN state
@@ -86,7 +86,7 @@ def test_enter_lottery():
     guess_tuples = [(elem, val) for elem, val in guesses]
 
     # Call the enter function with the correct format
-    tx = lottery.enter(guess_tuples, {"from": account, "value": lottery.getEntranceFee() + 100000000})
+    tx = lottery.enter(guess_tuples, {"from": account, "value": entrance_fee + 100000000})
     tx.wait(1)
 
     # Check if the player was added to the players array
@@ -155,3 +155,87 @@ def test_generateGuesses():
     print(random_guesses)
     assert len(random_guesses) != 0
     assert len(random_guesses) == len(lottery.getTicketElements())
+
+def test_endLottery_no_players(): # also tests the resetTicket, getRecentTicket, getTicket, getTicketHistory functions
+    luck_token, luck_bank, lottery, account = setup_environment()
+
+    lottery.startLottery({'from': account})
+
+    ticket = [lottery.getTicketDifficulty(),lottery.getTicketElements(),[],[]]
+
+    lottery.endLottery({'from': account})
+
+    assert lottery.lottery_state() == 1  # LOTTERY_STATE.CLOSED
+
+    ticket_difficulty_level = lottery.getTicketDifficulty()
+    ticket_elements = lottery.getTicketElements()
+
+    assert ticket_difficulty_level == 1
+    assert ticket_elements == []
+
+    ticket_in_history = lottery.getRecentTicket()
+
+    assert ticket_in_history == ticket 
+
+    nth_ticket = lottery.getTicket(0)
+
+    assert nth_ticket == ticket
+
+    # test with 2 tickets
+
+    lottery.startLottery({'from': account})
+
+    new_ticket = [lottery.getTicketDifficulty(),lottery.getTicketElements(),[],[]]
+
+    lottery.endLottery({'from': account})
+    
+    second_ticket_in_history = lottery.getRecentTicket()
+
+    assert second_ticket_in_history == new_ticket 
+
+    nth_ticket_again = lottery.getTicket(1)
+
+    assert nth_ticket_again == new_ticket
+
+    # test the getTicketHistory
+
+    ticket_history = lottery.getTicketHistory()
+
+    assert ticket_history == [nth_ticket,nth_ticket_again]
+ 
+def test_endLottery_with_players(): # also tests the get_players,requestRandomWords ,getRequestStatus function
+    luck_token, luck_bank, lottery, account = setup_environment()
+
+    lottery.startLottery({'from': account})
+
+    guesses = []
+    elements = lottery.getTicketElements()
+    
+    for i, element in enumerate(elements):
+        max_guess = lottery.getElementDifficulty(element)
+        guess = random.randint(1, max_guess)
+        guesses.append((element, guess))
+
+    # Calculate entrance fee
+    entrance_fee = lottery.getEntranceFee()
+
+    # Ensure the player sends enough ETH (matching entrance fee)
+    guess_tuples = [(elem, val) for elem, val in guesses]
+
+    # Call the enter function with the correct format
+    tx = lottery.enter(guess_tuples, {"from": account, "value": entrance_fee + 100000000})
+    tx.wait(1)
+
+    tx = lottery.endLottery({'from': account})
+
+    assert lottery.lottery_state() == 2  # LOTTERY_STATE.WATING_FOR_VRFCOORDINATOR
+
+    requestId = tx.events['RequestSent']['requestId']
+    numWords = tx.events['RequestSent']['numWords']
+
+    assert numWords == lottery.numWords()
+    assert requestId != 0
+
+    requestStatus = lottery.getRequestStatus(requestId)
+
+    assert requestStatus == [False, []] # (request.fulfilled, request.randomWords)

@@ -338,8 +338,8 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
             lottery_state == LOTTERY_STATE.OPEN,
             "(---) the lottery state needs to be OPEN"
         );
-        lottery_state = LOTTERY_STATE.WATING_FOR_VRFCOORDINATOR;
         if (players.length > 0) {
+            lottery_state = LOTTERY_STATE.WATING_FOR_VRFCOORDINATOR;
             requestRandomWords(false); //put true if wanna pay in eth
         } else {
             lottery_state = LOTTERY_STATE.CLOSED;
@@ -477,7 +477,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     //---------------------------------------------------
     function requestRandomWords(
         bool enableNativePayment
-    ) public onlyOwner returns (uint256 requestId) {
+    ) private returns (uint256 requestId) {
         requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: keyHash,
