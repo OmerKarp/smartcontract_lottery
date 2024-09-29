@@ -359,7 +359,7 @@ def test_calculate_winners(): # also tests the payLuckBankEarnings, resetTicket,
     assert final_luck_bank_balance == initial_luck_bank_balance + initial_lottery_balance * 0.1
 
     for i in range(len(tempWinners)):
-        assert initial_lottery_balance[i] == initial_lottery_balance[i] + (initial_lottery_balance * 0.9) / len(tempWinners)
+        assert initial_winners_balances[i] == initial_winners_balances[i] + (initial_lottery_balance * 0.9) / len(tempWinners)
 
     ticket_in_history = lottery.getRecentTicket()
 
