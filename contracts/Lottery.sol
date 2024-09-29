@@ -444,7 +444,7 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     function checkGuesses(
         Guess[] memory guesses,
         Guess[] memory winningGuesses
-    ) internal pure returns (bool) {
+    ) public pure returns (bool) {
         if (guesses.length != winningGuesses.length) return false;
 
         for (uint8 i = 0; i < guesses.length; i++) {

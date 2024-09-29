@@ -1,4 +1,4 @@
-from scripts.helpfull_scripts import get_account, LOCAL_BLOCKCHAIN_ENVIRONMENTS
+from scripts.helpfull_scripts import get_account, LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_contract
 from scripts.deploy_luck_token import deploy_luck_token
 from scripts.deploy_luck_bank import deploy_luck_bank
 from scripts.deploy import deploy_lottery
@@ -67,6 +67,10 @@ def test_startLottery(): # also tests the set_games,getTicketDifficulty,getTicke
 
 def test_enter_lottery():
     luck_token, luck_bank, lottery, account = setup_environment()
+    account2 = get_account(index=1)
+
+    with pytest.raises(exceptions.VirtualMachineError):
+        lottery.startLottery({'from': account2})
 
     # Ensure the lottery is in the OPEN state
     lottery.startLottery({'from': account})
@@ -92,6 +96,7 @@ def test_enter_lottery():
     # Check if the player was added to the players array
     assert lottery.players(0) == account
 
+    assert Web3.eth.get_balance(lottery.address) == (entrance_fee + 100000000)
     # Check if the player's guesses were stored correctly
     # also tests the getPlayersGuesses function
     player_guesses = lottery.getPlayersGuesses()[1]
@@ -158,10 +163,14 @@ def test_generateGuesses():
 
 def test_endLottery_no_players(): # also tests the resetTicket, getRecentTicket, getTicket, getTicketHistory functions
     luck_token, luck_bank, lottery, account = setup_environment()
+    account2 = get_account(index=1)
 
     lottery.startLottery({'from': account})
 
     ticket = [lottery.getTicketDifficulty(),lottery.getTicketElements(),[],[]]
+
+    with pytest.raises(exceptions.VirtualMachineError):
+        lottery.endLottery({'from': account2})
 
     lottery.endLottery({'from': account})
 
@@ -239,3 +248,122 @@ def test_endLottery_with_players(): # also tests the get_players,requestRandomWo
     requestStatus = lottery.getRequestStatus(requestId)
 
     assert requestStatus == [False, []] # (request.fulfilled, request.randomWords)
+
+def test_fulfillRandomWords(): # also tests the getRequestStatus function
+    luck_token, luck_bank, lottery, account = setup_environment()
+
+    lottery.startLottery({'from': account})
+
+    guesses = []
+    elements = lottery.getTicketElements()
+    
+    for i, element in enumerate(elements):
+        max_guess = lottery.getElementDifficulty(element)
+        guess = random.randint(1, max_guess)
+        guesses.append((element, guess))
+
+    # Calculate entrance fee
+    entrance_fee = lottery.getEntranceFee()
+
+    # Ensure the player sends enough ETH (matching entrance fee)
+    guess_tuples = [(elem, val) for elem, val in guesses]
+
+    # Call the enter function with the correct format
+    tx = lottery.enter(guess_tuples, {"from": account, "value": entrance_fee + 100000000})
+    tx.wait(1)
+
+    ending_transaction = lottery.endLottery({'from': account})
+
+    request_id = ending_transaction.events["RequestSent"]["requestId"]
+    STATIC_RNG = [22457654523000873890618985732870744312626094790626683287552762375778023379207]
+
+    assert request_id != 0
+    
+    tx = get_contract("vrf_coordinator").fulfillRandomWordsWithOverride(
+        request_id, lottery.address, STATIC_RNG, {"from": account}
+        )
+    tx.wait(1)
+
+    request_fulfilled_event = tx.events["RequestFulfilled"]
+
+    assert request_fulfilled_event == [request_id, STATIC_RNG]
+
+    assert lottery.lottery_state() == 3  # LOTTERY_STATE.CALCULATING_WINNER
+
+    requestId = ending_transaction.events['RequestSent']['requestId']
+    requestStatus = lottery.getRequestStatus(requestId)
+
+    assert requestStatus == [True, [22457654523000873890618985732870744312626094790626683287552762375778023379207]] # (request.fulfilled, request.randomWords)
+
+
+def test_calculate_winners(): # also tests the payLuckBankEarnings, resetTicket, playersGuesses, checkGuesses functions
+    luck_token, luck_bank, lottery, account = setup_environment()
+    account2 = get_account(index=1)
+
+    lottery.startLottery({'from': account})
+
+    guesses = []
+    elements = lottery.getTicketElements()
+    
+    for i, element in enumerate(elements):
+        max_guess = lottery.getElementDifficulty(element)
+        guess = random.randint(1, max_guess)
+        guesses.append((element, guess))
+
+    # Calculate entrance fee
+    entrance_fee = lottery.getEntranceFee()
+
+    # Ensure the player sends enough ETH (matching entrance fee)
+    guess_tuples = [(elem, val) for elem, val in guesses]
+
+    # Call the enter function with the correct format
+    tx = lottery.enter(guess_tuples, {"from": account, "value": entrance_fee + 100000000})
+    tx.wait(1)
+
+    ending_transaction = lottery.endLottery({'from': account})
+
+    request_id = ending_transaction.events["RequestSent"]["requestId"]
+    STATIC_RNG = [22457654523000873890618985732870744312626094790626683287552762375778023379207]
+    
+    tx = get_contract("vrf_coordinator").fulfillRandomWordsWithOverride(
+        request_id, lottery.address, STATIC_RNG, {"from": account}
+        )
+    tx.wait(1)
+
+    (playerAddresses,_) = lottery.getPlayersGuesses()
+    winningGuesses = lottery.generateGuesses(STATIC_RNG[0])
+    tempWinners = []
+    winnersCount = 0
+    for playerAddress in playerAddresses:
+        playerGuesses = lottery.getSinglePlayerGuesses(playerAddress)
+        for guesses in playerGuesses:
+            if lottery.checkGuesses(guesses, winningGuesses):
+                    tempWinners.append(playerAddress)
+                    winnersCount += 1
+                    break 
+            
+    initial_winners_balances = [Web3.eth.get_balance(winner) for winner in tempWinners]
+
+    initial_lottery_balance = Web3.eth.get_balance(lottery.address)
+    initial_luck_bank_balance = Web3.eth.get_balance(luck_bank.address)
+
+    with pytest.raises(exceptions.VirtualMachineError):
+        lottery.calculate_winners({'from': account2})
+    
+    lottery.calculate_winners({'from': account})
+
+    final_balance = Web3.eth.get_balance(lottery.address)
+    final_luck_bank_balance = Web3.eth.get_balance(luck_bank.address)
+
+    assert final_balance == initial_lottery_balance * 0.9
+    assert final_luck_bank_balance == initial_luck_bank_balance + initial_lottery_balance * 0.1
+
+    for i in range(len(tempWinners)):
+        assert initial_lottery_balance[i] == initial_lottery_balance[i] + (initial_lottery_balance * 0.9) / len(tempWinners)
+
+    ticket_in_history = lottery.getRecentTicket()
+
+    assert ticket_in_history[2] == winningGuesses
+    assert ticket_in_history[3] == tempWinners
+
+    assert lottery.lottery_state() == 1  # LOTTERY_STATE.CLOSE
