@@ -13,8 +13,8 @@ interface LuckBank {
 
 contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     address payable[] public players;
-    uint256 public usdEntryFee;
-    AggregatorV3Interface internal ethUsdPriceFeed;
+    uint256 public immutable usdEntryFee;
+    AggregatorV3Interface internal immutable ethUsdPriceFeed;
 
     address payable public LuckBankAddress;
     LuckBank public luckBank;
@@ -31,8 +31,6 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
 
     event GuessSubmitted(address indexed guesser, Guess[] guesses);
     event SolutionGenerated(Guess[] solution);
-    event debbuging_uint(uint256 number);
-    event debbuging_elements(Element[] ticketElements);
 
     struct Ticket {
         uint16 difficulty_level;
@@ -71,10 +69,10 @@ contract Lottery is ConfirmedOwnerWithProposal, VRFConsumerBaseV2Plus {
     uint256 public s_subscriptionId;
     uint256[] public requestIds;
     uint256 public lastRequestId;
-    bytes32 public keyHash;
-    uint32 public callbackGasLimit = 100000;
-    uint8 public requestConfirmations = 3;
-    uint8 public numWords = 1;
+    bytes32 public immutable keyHash;
+    uint32 public immutable callbackGasLimit = 100000;
+    uint8 public immutable requestConfirmations = 3;
+    uint8 public immutable numWords = 1;
     mapping(uint256 => RequestStatus) public s_requests;
 
     constructor(
