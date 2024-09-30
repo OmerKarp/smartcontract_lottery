@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract LuckBank is Ownable {
     mapping(address => uint256) public luckStakingBalance;
     address[] public stakers;
-    IERC20 public luckToken;
+    IERC20 public immutable luckToken;
     mapping(address => uint256) public stakersRewards;
     address public lotteryAddress;
 
